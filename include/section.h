@@ -9,7 +9,7 @@
 
 char* get_name(const uint32_t name);
 inline char* get_type(const uint32_t type); 
-inline char* get_flags(const uint64_t flags); 
+char* get_section_flags(const uint64_t flags); 
 char* get_addr(const uint64_t addr); 
 inline char* get_offset(const uint64_t offset); 
 char* get_size(const uint64_t size); 
