@@ -3,77 +3,160 @@
 
 // goifile
 
-char* get_name(const uint32_t name)
+char* get_section_name(char* strtab, const uint32_t name)
+{
+    char* buff = (char*) malloc(BUFF_SIZE);
+    char* ret = get_string_by_index(strtab, name);
+    buff[0] = '\0'; 
+    snprintf(buff, BUFF_SIZE, "%s", ret);
+    return buff;
+}
+char* get_section_type(const uint32_t type)
 {
     char* buff = (char*) malloc(BUFF_SIZE);
     buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%u", name);
+    switch (type) {
+        case SHT_NULL:
+            return "NULL";
+        case SHT_PROGBITS:
+            return "PROGBITS";
+        case SHT_SYMTAB:
+            return "SYMTAB";
+        case SHT_STRTAB:
+            return "STRTAB";
+        case SHT_RELA:
+            return "RELA";
+        case SHT_HASH:
+            return "HASH"; 
+        case SHT_DYNAMIC:
+            return "DYNAMIC";
+        case SHT_NOTE:
+            return "NOTE";
+        case SHT_NOBITS:
+            return "NOBITS";
+        case SHT_REL:
+            return "REL";
+        case SHT_SHLIB:
+            return "SHLIB";
+        case SHT_DYNSYM:
+            return "DYNSYM";
+        case SHT_INIT_ARRAY:
+            return "INIT_ARRAY";
+        case SHT_FINI_ARRAY:
+            return "FINI_ARRAY";
+        case SHT_PREINIT_ARRAY:
+            return "PREINIT_ARRAY";
+        case SHT_GROUP:
+            return "GROUP";
+        case SHT_SYMTAB_SHNDX:
+            return "STMTAB SECTION INDICES";
+        default:
+            snprintf(buff, BUFF_SIZE, "%08x: <unknown>", type); 
+    }
     return buff;
 }
-char* get_type(const uint32_t type)
-{
-    char* buff = (char*) malloc(BUFF_SIZE);
-    buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%u", type);
-    return buff;
+char *get_section_flags(const uint64_t flags) {
+  char* buff = (char*) malloc(BUFF_SIZE);
+  uint64_t mask = 1;
+  int index = 0;
+  while (flags >= mask) {
+    switch (flags & mask) {
+    case SHF_WRITE:
+      buff[index] = 'W';
+      break;
+    case SHF_ALLOC:
+      buff[index]= 'A';
+      break;
+    case SHF_EXECINSTR:
+      buff[index] = 'X';
+      break;
+    case SHF_MERGE:
+      buff[index] = 'M';
+      break;
+    case SHF_STRINGS:
+      buff[index] = 'S';
+      break;
+    case SHF_INFO_LINK:
+      buff[index] = 'I';
+      break;
+    case SHF_LINK_ORDER:
+      buff[index] = 'L';
+      break;
+    case SHF_OS_NONCONFORMING:
+      buff[index] = 'O';
+      break;
+    case SHF_GROUP:
+      buff[index] = 'G';
+      break;
+    case SHF_TLS:
+      buff[index] = 'T';
+      break;
+    case SHF_COMPRESSED:
+      buff[index] = 'C';
+      break;
+    default:
+      mask <<= 1;
+      continue;
+    }
+
+    index++;
+    mask <<= 1;
+  }
+
+  buff[index] = '\0';
+
+  return buff;
 }
-char* get_flags(const uint64_t flags)
-{
-    char* buff = (char*) malloc(BUFF_SIZE);
-    buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%llu", flags);
-    return buff;
-}
-char* get_addr(const uint64_t addr)
-{
-        char* buff = (char*) malloc(BUFF_SIZE);
-    buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%llu", addr);
-    return buff;
-}
-char* get_offset(const uint64_t offset)
-{
-    char* buff = (char*) malloc(BUFF_SIZE);
-    buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%llu", offset);
-    return buff;
 
 
-}
-char* get_size(const uint64_t size)
+char* get_section_addr(const uint64_t addr)
 {
     char* buff = (char*) malloc(BUFF_SIZE);
     buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%llu", size);
+    snprintf(buff, BUFF_SIZE, "%016llx", addr);
     return buff;
 }
-char* get_link(const uint32_t link)
+char* get_section_offset(const uint64_t offset)
+{
+    char* buff = (char*) malloc(BUFF_SIZE);
+    buff[0] = '\0'; 
+    snprintf(buff, BUFF_SIZE, "%08llx", offset);
+    return buff;
+}
+char* get_section_size(const uint64_t size)
+{
+    char* buff = (char*) malloc(BUFF_SIZE);
+    buff[0] = '\0'; 
+    snprintf(buff, BUFF_SIZE, "%016llx", size);
+    return buff;
+}
+char* get_section_link(const uint32_t link)
 {
     char* buff = (char*) malloc(BUFF_SIZE);
     buff[0] = '\0'; 
     snprintf(buff, BUFF_SIZE, "%u", link);
     return buff;
 }
-char* get_info(const uint32_t info)
+char* get_section_info(const uint32_t info)
 {
     char* buff = (char*) malloc(BUFF_SIZE);
     buff[0] = '\0'; 
     snprintf(buff, BUFF_SIZE, "%u", info);
     return buff;
 }
-char* get_addralign(const uint64_t addralign)
+char* get_section_addralign(const uint64_t addralign)
 {
     char* buff = (char*) malloc(BUFF_SIZE);
     buff[0] = '\0'; 
     snprintf(buff, BUFF_SIZE, "%llu", addralign);
     return buff;
 }
-char* get_entsize(const uint64_t entsize)
+char* get_section_entsize(const uint64_t entsize)
 {
 
     char* buff = (char*) malloc(BUFF_SIZE);
     buff[0] = '\0'; 
-    snprintf(buff, BUFF_SIZE, "%llu", entsize);
+    snprintf(buff, BUFF_SIZE, "%016llx", entsize);
     return buff;
 }
 MElf_Shdr **get_section_header(FILE* file, int is64, uint32_t e_shnum, uint64_t e_shoff)
@@ -134,7 +217,8 @@ MElf_Shdr_Print** display_section_header(FILE* file, MElf_Ehdr* elf_header)
 
     MElf_Shdr_Print** ret = (MElf_Shdr_Print**) malloc (elf_header->e_shnum * sizeof(MElf_Shdr_Print*));
     
-    for (uint16_t i = 0; i <elf_header->e_shnum; i++)
+    char* strtab = get_string_table(file, elf_header, array);
+    for (uint16_t i = 0; i < elf_header->e_shnum; i++)
     // for (uint16_t i = 0; i < 10; i++)
 
     {
@@ -148,16 +232,16 @@ MElf_Shdr_Print** display_section_header(FILE* file, MElf_Ehdr* elf_header)
 
         // header = (MElf_Phdr_Print* ) malloc(sizeof(MElf_Phdr_Print)); // ĐẴ từng lỗi ở đây segment fault 
 
-        header->s_name = get_name(array[i]->sh_name);
-        header->s_type = get_type(array[i]->sh_type); 
-        header->s_offset = get_offset(array[i]->sh_offset); 
-        header->s_addr = get_addr(array[i]->sh_addr); 
-        header->s_flags = get_flags(array[i]->sh_flags ); 
-        header->s_size = get_size(array[i]->sh_size); 
-        header->s_link  = get_link(array[i]->sh_link); 
-        header->s_info = get_info(array[i]->sh_info); 
-        header->s_addralign = get_addralign(array[i]->sh_addralign);
-        header->s_entsize = get_entsize(array[i]->sh_entsize);
+        header->s_name = get_section_name(strtab, array[i]->sh_name);
+        header->s_type = get_section_type(array[i]->sh_type); 
+        header->s_offset = get_section_offset(array[i]->sh_offset); 
+        header->s_addr = get_section_addr(array[i]->sh_addr); 
+        header->s_flags = get_section_flags(array[i]->sh_flags ); 
+        header->s_size = get_section_size(array[i]->sh_size); 
+        header->s_link  = get_section_link(array[i]->sh_link); 
+        header->s_info = get_section_info(array[i]->sh_info); 
+        header->s_addralign = get_section_addralign(array[i]->sh_addralign);
+        header->s_entsize = get_section_entsize(array[i]->sh_entsize);
         
 
     // header->s_type   = strdup("aaaa");

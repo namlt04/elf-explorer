@@ -26,14 +26,12 @@ int check_magic_number(char* edient)
     // khai bao cac co dau tien
 }
 
-char* get_string_table(FILE* file, MElf_Ehdr* ehdr, uint16_t size)
+char* get_string_table(FILE* file, MElf_Ehdr* ehdr, MElf_Shdr** shdr)
 {
+    MElf_Shdr* shrs_name = (MElf_Shdr*) shdr[ehdr->e_shstrndx];
 
-    // (Elf_Ehdr*) ehdr + ehdr->e_shstrndx;
-
-    // // dich chuyen toi vi tri nay
-    // char* buffer = read_file(file, size, shof);
-    // return buffer;
+    char* buffer = read_file(file, shrs_name->sh_size, shrs_name->sh_offset);
+    return buffer;
 }
 char* get_string_by_index(char* strtab,int index)
 {

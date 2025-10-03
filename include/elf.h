@@ -532,8 +532,7 @@ typedef struct
 #define SHF_STRINGS	     (1 << 5)	/* Contains nul-terminated strings */
 #define SHF_INFO_LINK	     (1 << 6)	/* `sh_info' contains SHT index */
 #define SHF_LINK_ORDER	     (1 << 7)	/* Preserve order after combining */
-#define SHF_OS_NONCONFORMING (1 << 8)	/* Non-standard OS specific handling
-					   required */
+#define SHF_OS_NONCONFORMING (1 << 8)	/* Non-standard OS specific handling require*/
 #define SHF_GROUP	     (1 << 9)	/* Section is member of a group.  */
 #define SHF_TLS		     (1 << 10)	/* Section hold thread-local data.  */
 #define SHF_COMPRESSED	     (1 << 11)	/* Section with compressed data. */

@@ -176,18 +176,15 @@ void init_right_frame(gchar* name)
                 gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
                                                     0, entity->s_name, 
                                                     1, entity->s_type,
-                                                    2, entity->s_flags,
-                                                    3, entity->s_addr,  
-                                                    4, entity->s_offset, 
-                                                    5, entity->s_size,
-                                                    6, entity->s_link, 
-                                                    7, entity->s_info, 
-                                                    8, entity->s_addralign, 
-                                                    9, entity->s_entsize
+                                                    2, entity->s_addr,
+                                                    3, entity->s_offset,  
+                                                    4, entity->s_size, 
+                                                    5, entity->s_entsize,
+                                                    6, entity->s_flags, 
+                                                    7, entity->s_link, 
+                                                    8, entity->s_info, 
+                                                    9, entity->s_addralign
                 );
-
-
-      
             }
 
             GtkTreeViewColumn *name = gtk_tree_view_column_new_with_attributes("Name", right_frame_renderer, "text", 0, NULL);
@@ -246,8 +243,8 @@ void init_right_frame(gchar* name)
                                                     3, entity->s_paddr,  
                                                     4, entity->s_filesz, 
                                                     5, entity->s_memsz,
-                                                    6, entity->s_align, 
-                                                    7, entity->s_flags
+                                                    6, entity->s_flags, 
+                                                    7, entity->s_align
                 );
                 free(entity->s_type);        
                 free(entity->s_offset);      
