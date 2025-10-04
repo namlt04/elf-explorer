@@ -5,7 +5,7 @@
 #include "program.h"
 #include <glib.h>
 #include "section.h"
-
+#include "dynamic.h"
 
 GtkWidget *window;
 GtkWidget *hpaned;
@@ -283,6 +283,41 @@ void init_right_frame(gchar* name)
             
             GtkTreeViewColumn *align = gtk_tree_view_column_new_with_attributes("Align", right_frame_renderer, "text", 7, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), align);
+        } else if ( g_strcmp0(name, "Load Library") == 0)
+        {
+            right_frame_store = gtk_list_store_new(3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+            right_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(right_frame_store));
+            gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(right_frame_tree_view), GTK_TREE_VIEW_GRID_LINES_BOTH);
+
+            if ( !g_elf_header)
+                if (init_elf_header())
+                {   
+                    focus_metadata();
+                    return;
+                }
+            MElf_Phdr** program_headers = read_program_header(g_file,g_elf_header->e_ident[EI_CLASS] == ELFCLASS64, g_elf_header->e_phnum, g_elf_header->e_phoff);
+            MElf_Dyn_Print** arrays = display_load_library(g_file, g_elf_header, program_headers);
+            for(int i = 0; i < 28; i++)
+            {
+                MElf_Dyn_Print* entity =  (MElf_Dyn_Print*) arrays[i];
+                gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                                    0, entity->tag, 
+                                                    1, entity->type,
+                                                    2, entity->name
+                );
+            }
+
+            GtkTreeViewColumn *tag = gtk_tree_view_column_new_with_attributes("Tag", right_frame_renderer, "text", 0, NULL);
+            gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view),tag);
+            
+            GtkTreeViewColumn *type = gtk_tree_view_column_new_with_attributes("Type", right_frame_renderer, "text", 1, NULL);
+            gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), type); 
+
+            GtkTreeViewColumn *name = gtk_tree_view_column_new_with_attributes("Name", right_frame_renderer, "text", 2, NULL);
+            gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), name);
+            
+            
+
         }
 
     right_frame_scroll = gtk_scrolled_window_new(NULL, NULL); 
@@ -330,6 +365,9 @@ void init_left_frame()
 
     gtk_tree_store_append(left_frame_store, &left_frame_child, &left_frame_iter);
     gtk_tree_store_set(left_frame_store, &left_frame_child, 0, "Section Header", -1);
+
+    gtk_tree_store_append(left_frame_store, &left_frame_iter, NULL);
+    gtk_tree_store_set(left_frame_store, &left_frame_iter, 0, "Load Library", -1);
 
     left_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(left_frame_store));
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(left_frame_tree_view), FALSE);
