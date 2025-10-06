@@ -35,7 +35,6 @@ void display_strings_valid(FILE* file,CallbackFunction callback)
                 if ( index_str >= 4)
                 {
                     ret[index_str] = '\0'; 
-                    printf("%s\n",strdup(ret));
                     callback(strdup(ret));
                 } 
                 index_str = 0; 

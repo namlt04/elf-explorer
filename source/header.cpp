@@ -50,11 +50,11 @@ char* get_number_of_section_header(const uint64_t shnum)
   return buffer;
 }
 
-char* get_section_header_string_table_index_header(const uint64_t shstrndx)
+char* get_section_header_string_table_index(const uint64_t shstrndx)
 {
-  char* buffer= (char*) malloc(256);
+  char* buffer= (char*) malloc(BUFF_SIZE);
   buffer[0] = '\0';
-  snprintf(buffer, BUFF_SIZE, "%llu", shstrndx); 
+  snprintf(buffer, BUFF_SIZE, "%lld", shstrndx); 
   return buffer;
 }
 
@@ -86,7 +86,7 @@ char* get_type(const uint16_t type)
   
 
 }
-char* get_version_num(const uint32_t version)
+char* get_version(const uint32_t version)
 {
   char* buffer= (char*) malloc(256);
   buffer[0] = '\0';
@@ -103,9 +103,9 @@ char* get_abi_version(const uint8_t abi_version)
 char* get_magic(const unsigned char* e_ident)
 {
   
-  size_t buff_size = EI_NIDENT * 3 + 1; // + 1 \0 là kí tự NULL 
+  size_t buff_size = EI_NIDENT * 3 + 1; 
   char* buffer = (char* ) malloc(buff_size);
-  buffer[0] = '\0'; // Đảm bảo buffer không chứa kí tự rác
+  buffer[0] = '\0'; 
   int i = 0;
   for(; i < EI_NIDENT; i++)
   {
@@ -136,16 +136,6 @@ char* get_data(const unsigned char* e_ident)
         case ELFDATA2LSB: return "2's complement, little endian";
         case ELFDATA2MSB: return "2's complement, big endian";
         default: 
-            return "<unknow>";
-    }
-}
-char* get_version(const unsigned char* e_ident)
-{
-    switch(e_ident[EI_VERSION])
-    {
-        case EV_NONE : return "0"; 
-        case EV_CURRENT : return "1 (Current)";
-        default :
             return "<unknow>";
     }
 }
@@ -465,11 +455,26 @@ char* get_number_of_program_header(const uint16_t e_phnum)
   return buf;
 
 }
-
-char* get_section_header_string_table_index()
+char* get_elf_version_ident(unsigned char* ident)
 {
-  return "test";
+  char* buff = (char*) malloc(BUFF_SIZE); 
+  buff[0] = '\0'; 
+
+  switch(ident[EI_VERSION])
+  {
+    case EV_NONE : 
+      snprintf(buff, BUFF_SIZE, "0");
+      break;
+    case EV_CURRENT : "1 (Current)";
+      snprintf(buff, BUFF_SIZE, "1 (Current)");
+      break; 
+    default :
+      snprintf(buff, BUFF_SIZE, "<unkow>");
+      break;
+  }
+  return buff;
 }
+
 MEhdr_Print* display_elf_header(MElf_Ehdr* header)
 {
 
@@ -481,13 +486,12 @@ MEhdr_Print* display_elf_header(MElf_Ehdr* header)
     ret->s_data = get_data(header->e_ident); 
 
     // ret->s_version = get_elf_version(header->e_ident);
-    ret->s_version = "test";
-
+    ret->s_version_ident = get_elf_version_ident(header->e_ident);
     ret->s_osabi = get_osabi_name(header->e_ident);
     ret->s_abiversion = get_abi_version(header->e_ident[EI_ABIVERSION]);
     ret->s_type = get_file_type(header->e_type);
     ret->s_machine = get_machine_name(header->e_machine); 
-    ret->s_version0 = get_version(header->e_ident);
+    ret->s_version = get_version(header->e_version);
 
 
     ret->s_entrypoint_address = get_entrypoint_address(header->e_entry);
@@ -501,6 +505,6 @@ MEhdr_Print* display_elf_header(MElf_Ehdr* header)
 
     ret->s_size_of_section_header = get_size_of_section_header(header->e_shentsize); 
     ret->s_number_of_section_header = get_number_of_section_header(header->e_shnum); 
-    ret->s_section_header_string_table_index = get_section_header_string_table_index();
+    ret->s_section_header_string_table_index = get_section_header_string_table_index(header->e_shstrndx);
     return ret;
 }

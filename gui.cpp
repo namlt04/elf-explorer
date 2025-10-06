@@ -290,12 +290,12 @@ void init_right_frame(gchar* name)
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Magic", 1,header->s_magic, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Class", 1,header->s_class, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Data", 1,header->s_data, -1); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version,-1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version_ident,-1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "OS/ABI", 1,header->s_osabi, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "ABI Version", 1,header->s_abiversion, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Type", 1,header->s_type, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Machine", 1,header->s_machine, -1); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version0, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Entry Point Address", 1,header->s_entrypoint_address, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Start of program headers", 1,header->s_start_of_program_header, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Start of section headers", 1,header->s_start_of_section_header, -1); 
@@ -465,6 +465,7 @@ void init_right_frame(gchar* name)
                 }
             size_t count;
             MElf_Phdr** program_headers = read_program_header(g_file,g_elf_header->e_ident[EI_CLASS] == ELFCLASS64, g_elf_header->e_phnum, g_elf_header->e_phoff, insert_value_hex_view);
+            gtk_widget_hide(right_frame_bottom);
             MElf_Dyn_Print** arrays = display_load_library(g_file, g_elf_header, program_headers, &count);
             for(int i = 0; i < count; i++)
             {
