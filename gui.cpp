@@ -159,7 +159,7 @@ void insert_value_hex_view(size_t size_temp, char* buffer)
             gtk_container_add(GTK_CONTAINER(right_frame_bottom_scroll), text_view); 
             gtk_container_add(GTK_CONTAINER(right_frame_bottom), right_frame_bottom_scroll);
 
-        gtk_widget_show_all(right_frame_bottom);
+
 }
 
 int init_elf_header()
@@ -315,6 +315,7 @@ void init_right_frame(gchar* name)
             
             GtkTreeViewColumn *value = gtk_tree_view_column_new_with_attributes("Value", right_frame_renderer, "text", 1, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), value);
+            gtk_widget_show_all(right_frame_bottom);
 
 
             
@@ -383,7 +384,8 @@ void init_right_frame(gchar* name)
             
             GtkTreeViewColumn *align = gtk_tree_view_column_new_with_attributes("Align", right_frame_renderer, "text", 9, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), align);
-        
+            
+            gtk_widget_show_all(right_frame_bottom);
         } else if ( g_strcmp0( name, "Program Header") == 0)
         {
 
@@ -449,7 +451,8 @@ void init_right_frame(gchar* name)
             
             GtkTreeViewColumn *align = gtk_tree_view_column_new_with_attributes("Align", right_frame_renderer, "text", 7, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), align);
-        
+            
+            gtk_widget_show_all(right_frame_bottom);
 
         } else if ( g_strcmp0(name, "Load Library") == 0)
         {
@@ -465,7 +468,7 @@ void init_right_frame(gchar* name)
                 }
             size_t count;
             MElf_Phdr** program_headers = read_program_header(g_file,g_elf_header->e_ident[EI_CLASS] == ELFCLASS64, g_elf_header->e_phnum, g_elf_header->e_phoff, insert_value_hex_view);
-            gtk_widget_hide(right_frame_bottom);
+         
             MElf_Dyn_Print** arrays = display_load_library(g_file, g_elf_header, program_headers, &count);
             for(int i = 0; i < count; i++)
             {
@@ -620,7 +623,7 @@ void on_open_activate(GtkMenuItem *menuitem, gpointer user_data) {
         if(isOpenFile)
             on_close_activate(menuitem, user_data);
         g_file = fopen(filename, "rb");
-        // Neu nhu mo thanh cong
+    
         init_left_frame();
         isOpenFile = !isOpenFile; // Dang dong -> mo
         gtk_widget_set_sensitive(open_item, isOpenFile);
