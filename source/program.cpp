@@ -118,7 +118,7 @@ MElf_Phdr **read_program_header(FILE* file, int is64, uint16_t e_phnum, uint64_t
     size_t size = (is64 ? sizeof(MElf64_Phdr) : sizeof(MElf32_Phdr)) * e_phnum;
     // size_t size = e_phentsize * e_phnum
     char* buffer = (char*) read_file(file, size, e_phoff);
-    callback(size, buffer);
+    callback(size, buffer, e_phoff);
     MElf_Phdr** headers = (MElf_Phdr**) malloc(sizeof(MElf_Phdr*) * e_phnum);
     uint16_t index = 0;
     for(; index < e_phnum; index++)

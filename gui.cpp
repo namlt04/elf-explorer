@@ -5,7 +5,7 @@
 #include "program.h"
 #include <glib.h>
 #include "section.h"
-#include "dynamic.h"
+#include "library.h"
 #include "strings.h"
 #include "utils.h"
 #include <sys/stat.h>
@@ -46,8 +46,6 @@ GtkTreeViewColumn* right_frame_column;
 GtkWidget *right_frame_top_scroll = NULL, *right_frame_bottom_scroll = NULL;
 GtkTreeIter right_frame_iter;
 
-
-
 GtkWidget* text_view;
 
 
@@ -56,7 +54,16 @@ FILE* g_file;
 MElf_Ehdr* g_elf_header = NULL;
 char* g_filename;
 
-
+/**
+ * @brief Jump to TreeIter Metadata.
+ *
+ * This function switches to the Metadata view when the opened file 
+ * is not an ELF file.
+ *
+ * @param None
+ *
+ * @return void
+ */
 void focus_metadata()
 {
     GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(left_frame_tree_view));
@@ -65,6 +72,18 @@ void focus_metadata()
     gtk_tree_view_set_cursor(GTK_TREE_VIEW(left_frame_tree_view), path, NULL, FALSE);
     gtk_tree_path_free(path);
 }
+/**
+ * @brief Show an information dialog.
+ *
+ * This function displays an information dialog when the user clicks 
+ * on a TreeIter node that is not valid.
+ *
+ * @param parent  (GtkWidget*)   The parent widget for the dialog.
+ * @param title   (const char*)  The title of the dialog window.
+ * @param message (const char*)  The message text displayed to the user.
+ *
+ * @return void
+ */
 void show_info_dialog(GtkWidget* parent, const char* title, const char* message)
 {
     GtkWidget* dialog;
@@ -80,6 +99,16 @@ void show_info_dialog(GtkWidget* parent, const char* title, const char* message)
     gtk_widget_destroy(dialog);
 }
 
+/**
+ * @brief Destroy the right frame.
+ *
+ * This function resets all widgets in the right frame when 
+ * the TreeIter is changed.
+ *
+ * @param None
+ *
+ * @return void
+ */
 
 void destroy_right_frame()
 {
@@ -97,12 +126,36 @@ void destroy_right_frame()
     right_frame_store = NULL; 
     right_frame_tree_view = NULL;
 }
+/**
+ * @brief Insert strings into the table.
+ *
+ * When the user clicks on a TreeIter node representing strings,
+ * this function analyzes the file and inserts each valid string
+ * into the table. It serves as a callback in the logic flow.
+ *
+ * @param buffer (char*)  The string returned during the logic handling.
+ *
+ * @return void
+ */
+
 void insert_string_to_table(char* buffer)
 {
     gtk_list_store_insert_with_values(right_frame_store,&right_frame_iter, -1, 0, buffer, -1);
    
 }
-void insert_value_hex_view(size_t size_temp, char* buffer)
+/**
+ * @brief Insert hex values into the HexView (right_frame_bottom).
+ *
+ * This function is a callback, invoked when the system reads 
+ * headers (Program or Section).
+ *
+ * @param size_temp (size_t)  The size of the buffer.
+ * @param buffer    (char*)   The buffer containing the data read from the file.
+ * @param offset    (size_t) 
+ * @return void
+ */
+
+void insert_value_hex_view(size_t size_temp, char* buffer, size_t offset)
 {
     GtkWidget* text_view = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE); 
@@ -116,7 +169,7 @@ void insert_value_hex_view(size_t size_temp, char* buffer)
 	    if ( index_line == 0) 
         {   
                     j_start = index;
-		            g_string_append_printf(out, "%08llx     ", index);
+		            g_string_append_printf(out, "%08llx     ", offset + index);
         }
 	                g_string_append_printf(out,"%02x ", (unsigned char)buffer[index]);	
 	                index_line++;
@@ -161,17 +214,42 @@ void insert_value_hex_view(size_t size_temp, char* buffer)
 
 
 }
+/**
+ * @brief Initialize struct MElf_Header.
+ *
+ * When the user wants to view something other than the ELF header first,
+ * this function ensures that the ELF header is exported, including the 
+ * Program Header (e_phoff) and Section Header (e_shoff).
+ *
+ * @param None
+ *
+ * @return 1 if the file is not an ELF file.  
+ *         0 if initialization was successful.
+ */
 
 int init_elf_header()
 {
     g_elf_header = read_header_file(g_file, insert_value_hex_view);
     if (!g_elf_header)
     {
-        show_info_dialog(window, "Thông báo", "Vui lòng chọn file .ELF để xem tính năng này");
+        show_info_dialog(window, "Notification", "Vui lòng chọn file .ELF để xem tính năng này");
         return 1;
     }
     return 0;
 }
+/**
+ * @brief Initialize a permission string (e.g., "rwxrwxrwx").
+ *
+ * This function converts a file mode (from `stat` struct) into a human-readable
+ * permission string representation.
+ *
+ * @param mode (mode_t)   File mode value from the `stat` structure.
+ * @param out  (char*)    Buffer for the resulting permission string.
+ *                        Must be large enough to hold at least 10 characters
+ *                        including the null terminator.
+ *
+ * @return void
+ */
 void get_permission_lines(mode_t mode, char *out) {
     char user[64], group[64], other[64];
 
@@ -193,6 +271,18 @@ void get_permission_lines(mode_t mode, char *out) {
 
     sprintf(out, "%s\n%s\n%s", user, group, other);
 }
+
+/**
+ * @brief Initialize the right frame of the UI.
+ *
+ * This function builds the right-side view of the interface, which contains:
+ *   - Top view    : Information display
+ *   - Bottom view : Hex dump section
+ *
+ * @param name (gchar*)  The name or label for the frame.
+ *
+ * @return void
+ */
 void init_right_frame(gchar* name)
 {
     destroy_right_frame();
@@ -205,12 +295,10 @@ void init_right_frame(gchar* name)
         struct stat st;
         if (fstat(fileno(g_file), &st) == 0) 
         {
-        //     // Kích thước
             char* filename = g_path_get_basename(g_filename); 
-            char* location = g_path_get_dirname(g_filename);
+            char* location = g_path_get_dirname(g_filename); 
             gtk_list_store_insert_with_values(right_frame_store,&right_frame_iter, -1, 0, "Name", 1, filename, -1);
             gtk_list_store_insert_with_values(right_frame_store,&right_frame_iter, -1, 0, "Location", 1, location, -1);
-
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
                                              0, "Size", 1, g_strdup_printf("%lld (bytes)", (long long)st.st_size), -1);
 
@@ -223,45 +311,33 @@ void init_right_frame(gchar* name)
             else if (S_ISFIFO(st.st_mode)) ftype = "FIFO/pipe";
             else if (S_ISSOCK(st.st_mode)) ftype = "socket";
             else ftype = "<unknown>";
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Type", 1, ftype, -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Type", 1, ftype, -1);
+            
 
-        //     // Quyền truy cập
+            // PERMISSION
             char perm_lines[256];
             get_permission_lines(st.st_mode, perm_lines);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Permissions", 1, perm_lines, -1);
 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                  0, "Permissions", 1, perm_lines, -1);
-
-
-        //     // Owner & Group
+            // 
             struct passwd* pw = getpwuid(st.st_uid);
             struct group* gr = getgrgid(st.st_gid);
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Owner", 1, pw ? pw->pw_name : "unknown", -1);
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Group", 1, gr ? gr->gr_name : "unknown", -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Owner", 1, pw ? pw->pw_name : "unknown", -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Group", 1, gr ? gr->gr_name : "unknown", -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Number of hard links", 1, g_strdup_printf("%ld", (long)st.st_nlink), -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Preferred block size", 1, g_strdup_printf("%ld bytes", (long)st.st_blksize), -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Blocks allocated", 1, g_strdup_printf("%ld", (long)st.st_blocks), -1);
 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Number of hard links", 1, g_strdup_printf("%ld", (long)st.st_nlink), -1);
-
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Preferred block size", 1, g_strdup_printf("%ld bytes", (long)st.st_blksize), -1);
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Blocks allocated", 1, g_strdup_printf("%ld", (long)st.st_blocks), -1);
-
+            // TIME
             char buf[64];
             strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&st.st_atime));
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Last access", 1, buf,-1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,0, "Last access", 1, buf,-1);
             strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&st.st_mtime));
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Last modification", 1, buf,-1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Last modification", 1, buf,-1);
             strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&st.st_ctime));
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
-                                             0, "Last status change", 1, buf,-1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Last status change", 1, buf,-1);
         }
-            
+
         right_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(right_frame_store));
         gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(right_frame_tree_view), GTK_TREE_VIEW_GRID_LINES_BOTH);
      
@@ -270,8 +346,6 @@ void init_right_frame(gchar* name)
             
         GtkTreeViewColumn *value = gtk_tree_view_column_new_with_attributes("Value", right_frame_renderer, "text", 1, NULL);
         gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), value); 
-
-
     } else if ( g_strcmp0(name, "ELF Header") == 0)
         {
             right_frame_store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
@@ -279,13 +353,16 @@ void init_right_frame(gchar* name)
             right_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(right_frame_store));
             gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(right_frame_tree_view), GTK_TREE_VIEW_GRID_LINES_BOTH);
 
+            g_elf_header = NULL;
             if ( !g_elf_header)
+            {
+            
                 if (init_elf_header()) 
                 {
                     focus_metadata(); 
                     return;
                 }
-
+            }
             MEhdr_Print* header = display_elf_header(g_elf_header);
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Magic", 1,header->s_magic, -1); 
             gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Class", 1,header->s_class, -1); 
@@ -508,6 +585,11 @@ void init_right_frame(gchar* name)
     gtk_container_add(GTK_CONTAINER(right_frame_top), right_frame_top_scroll);
 
 }
+/**
+ * @brief Handle tree selection.
+ *
+ * This function is called when a TreeView item is selected.
+ */
 void on_tree_selection_changed(GtkTreeView *tree_view, gpointer user_data) {
     GtkTreeSelection *selection;
     GtkTreeModel *model;
@@ -530,7 +612,16 @@ void on_tree_selection_changed(GtkTreeView *tree_view, gpointer user_data) {
     gtk_widget_show_all(right_frame_top);
 
 }
-
+/**
+ * @brief Re-initialize after destroy.
+ *
+ * This function resets and re-initializes resources 
+ * after the right frame (or related widgets) has been destroyed.
+ *
+ * @param None
+ *
+ * @return void
+ */
 void init_left_frame()
 {
     
@@ -576,8 +667,16 @@ void init_left_frame()
     focus_metadata();
 }
 
-
-
+/**
+ * @brief Reset the left frame when closing or opening a new file.
+ *
+ * This function clears and resets the left_frame to its initial state 
+ * whenever the current file is closed or a new file is opened.
+ *
+ * @param None
+ *
+ * @return void
+ */
 void destroy_left_frame()
 {
     gtk_widget_destroy(left_frame_scroll);
@@ -589,7 +688,12 @@ void destroy_left_frame()
 
 
 
-// ---- handle click on menu bar
+/**
+ * @brief Handle menu bar clicks (Close, Open, Exit).
+ *
+ * This function is triggered when the user clicks 
+ * on a menu bar item such as Close, Open, or Exit.
+ */
 void on_close_activate(GtkMenuItem *menuitem, gpointer user_data) {
 
     g_file = NULL; 
@@ -637,7 +741,7 @@ void on_exit_activate(GtkMenuItem *menuitem, gpointer user_data) {
     gtk_main_quit();
 }
 
-// ---- main
+
 int main(int argc, char *argv[]) {
 
     gtk_init(&argc, &argv);

@@ -5,7 +5,7 @@ CXXFLAGS = $(CFLAGS)
 LDFLAGS = `pkg-config --libs gtk+-3.0`
 
 
-SRC_CPP = gui.cpp source/header.cpp source/program.cpp source/utils.cpp source/section.cpp source/dynamic.cpp source/strings.cpp
+SRC_CPP = gui.cpp source/header.cpp source/program.cpp source/utils.cpp source/section.cpp source/library.cpp source/strings.cpp
 
 OBJ_C = $(SRC_C:.c=.o)
 OBJ_CPP = $(SRC_CPP:.cpp=.o)

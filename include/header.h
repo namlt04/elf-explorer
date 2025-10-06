@@ -6,7 +6,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-typedef void (*HeaderCallback)(size_t size_temp, char* buffer);
+typedef void (*HeaderCallback)(size_t size_temp, char* buffer, size_t offset);
 typedef struct
 {
   char* s_magic;

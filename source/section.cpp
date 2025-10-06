@@ -165,7 +165,7 @@ MElf_Shdr **get_section_header(FILE* file, int is64, uint32_t e_shnum, uint64_t 
     size_t size = (is64 ? sizeof(MElf64_Shdr) : sizeof(MElf32_Shdr)) * e_shnum;
     // size_t size = e_phentsize * e_phnum
     char* buffer = (char*) read_file(file, size, e_shoff);
-    callback(size, buffer);
+    callback(size, buffer, e_shoff);
     MElf_Shdr** headers = (MElf_Shdr** ) malloc(sizeof(MElf_Shdr*) * e_shnum);
     int index = 0; 
     for (; index < e_shnum; index++)

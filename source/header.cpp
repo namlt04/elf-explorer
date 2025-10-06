@@ -392,7 +392,7 @@ MElf_Ehdr *read_header_file(FILE* file, HeaderCallback callback)
 
     char* buffer = (char*) read_file(file, sizeof(MElf64_Ehdr), 0) ;
     // create hex view
-    callback((size_t) sizeof(MElf64_Ehdr), buffer);
+    callback((size_t) sizeof(MElf64_Ehdr), buffer, 0);
 
     int isElfFile = check_magic_number(buffer);
     int index; 

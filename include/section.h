@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 
-typedef void (*SectionCallback)(size_t size_temp,char* buffer); 
+typedef void (*SectionCallback)(size_t size_temp,char* buffer, size_t offset); 
 
 
 char* get_section_name(char* strtab, const uint32_t name);

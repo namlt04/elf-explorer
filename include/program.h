@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "utils.h"
 #include "header.h"
-typedef void (*ProgramCallback)(size_t temp, char* buffer); 
+typedef void (*ProgramCallback)(size_t temp, char* buffer, size_t offset); 
 typedef struct
 {
     char* s_type; 
