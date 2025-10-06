@@ -396,12 +396,14 @@ char* get_machine_name(uint16_t e_machine) {
 
 
 // H
-MElf_Ehdr *read_header_file(FILE* file)
+MElf_Ehdr *read_header_file(FILE* file, HeaderCallback callback)
 {
     MElf_Ehdr* header = (MElf_Ehdr* ) malloc(sizeof(MElf_Ehdr));
 
     char* buffer = (char*) read_file(file, sizeof(MElf64_Ehdr), 0) ;
-    
+    // create hex view
+    callback((size_t) sizeof(MElf64_Ehdr), buffer);
+
     int isElfFile = check_magic_number(buffer);
     int index; 
     for(index = 0; index < EI_NIDENT; index++)
@@ -471,38 +473,8 @@ char* get_section_header_string_table_index()
 MEhdr_Print* display_elf_header(MElf_Ehdr* header)
 {
 
-
-  //   MEhdr_Print* ret = (MEhdr_Print*) malloc(sizeof(MEhdr_Print));
-
-  //   ret->s_magic   = strdup("7f 45 4c 46");
-  //   ret->s_class   = strdup("ELF64");
-  //   ret->s_data    = strdup("Little Endian");
-  //   ret->s_version = strdup("1 (current)");
-  //   ret->s_osabi   = strdup("UNIX - System V");
-  //   ret->s_abiversion = strdup("0");
-  //   ret->s_type    = strdup("Executable file");
-  //   ret->s_machine = strdup("AMD x86-64");
-  //   ret->s_version0 = strdup("EV_CURRENT");
-  //   ret->s_entrypoint_address = strdup("0x400000");
-  //   ret->s_start_of_program_header = strdup("64 (bytes into file)");
-  //   ret->s_start_of_section_header = strdup("0 (none)");
-  //   ret->s_flags   = strdup("0x0");
-  //   ret->s_size_of_this_header = strdup("64");
-  //   ret->s_size_of_program_header = strdup("56");
-  //   ret->s_number_of_program_header = strdup("8");
-  //   ret->s_size_of_section_header = strdup("64");
-  //   ret->s_number_of_section_header = strdup("0");
-  //   ret->s_section_header_string_table_index = strdup("0");
-
-  //   return ret;
-
-
     MEhdr_Print* ret = (MEhdr_Print*)malloc(sizeof(MEhdr_Print));
 
-
-
-
-    printf("ELF Header:\n");
 
     ret->s_magic = get_magic(header->e_ident);
     ret->s_class = get_class(header->e_ident); 
@@ -530,28 +502,5 @@ MEhdr_Print* display_elf_header(MElf_Ehdr* header)
     ret->s_size_of_section_header = get_size_of_section_header(header->e_shentsize); 
     ret->s_number_of_section_header = get_number_of_section_header(header->e_shnum); 
     ret->s_section_header_string_table_index = get_section_header_string_table_index();
-
-
-    // ret->s_magic   = strdup("7f 45 4c 46");
-    // ret->s_class   = strdup("ELF64");
-    // ret->s_data    = strdup("Little Endian");
-    // ret->s_version = strdup("1 (current)");
-    // ret->s_osabi   = strdup("UNIX - System V");
-    // ret->s_abiversion = strdup("0");
-    // ret->s_type    = strdup("Executable file");
-    // ret->s_machine = strdup("AMD x86-64");
-    // ret->s_version0 = strdup("EV_CURRENT");
-    // ret->s_entrypoint_address = strdup("0x400000");
-    // ret->s_start_of_program_header = strdup("64 (bytes into file)");
-    // ret->s_start_of_section_header = strdup("0 (none)");
-    // ret->s_flags   = strdup("0x0");
-    // ret->s_size_of_this_header = strdup("64");
-    // ret->s_size_of_program_header = strdup("56");
-    // ret->s_number_of_program_header = strdup("8");
-    // ret->s_size_of_section_header = strdup("64");
-    // ret->s_number_of_section_header = strdup("0");
-    // ret->s_section_header_string_table_index = strdup("0");
-
-
     return ret;
 }

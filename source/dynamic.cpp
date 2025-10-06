@@ -216,16 +216,15 @@ MElf_Dyn** get_dynamic_array( FILE* file, MElf_Phdr** phdr, MElf_Ehdr* elf_heade
 
 }
 
-MElf_Dyn_Print** display_load_library(FILE* file,MElf_Ehdr* elf_header, MElf_Phdr** program_header)
+MElf_Dyn_Print** display_load_library(FILE* file,MElf_Ehdr* elf_header, MElf_Phdr** program_header, size_t* count)
 {
-    size_t count; 
-    MElf_Dyn** dynamic_array = get_dynamic_array(file, program_header, elf_header, &count);
+    MElf_Dyn** dynamic_array = get_dynamic_array(file, program_header, elf_header, count);
 
 
     size_t size;
 	uint64_t strtab_vaddr;
     uint64_t index;
-    for( index = 0; index < count; index++)
+    for( index = 0; index < (*count); index++)
 	{
         MElf_Dyn* p = dynamic_array[index];
 
@@ -253,9 +252,9 @@ MElf_Dyn_Print** display_load_library(FILE* file,MElf_Ehdr* elf_header, MElf_Phd
             
     char *strtab = read_file(file, size, strtab_offset);
     
-    MElf_Dyn_Print** ret = (MElf_Dyn_Print**) malloc(count * sizeof(MElf_Dyn_Print*));
+    MElf_Dyn_Print** ret = (MElf_Dyn_Print**) malloc((*count) * sizeof(MElf_Dyn_Print*));
    
-    for (index = 0; index < count; index++) 
+    for (index = 0; index < (*count); index++) 
     {
         MElf_Dyn_Print* element =(MElf_Dyn_Print*) malloc(sizeof(MElf_Dyn_Print)); 
         ret[index] = element;

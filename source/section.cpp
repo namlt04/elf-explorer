@@ -159,12 +159,13 @@ char* get_section_entsize(const uint64_t entsize)
     snprintf(buff, BUFF_SIZE, "%016llx", entsize);
     return buff;
 }
-MElf_Shdr **get_section_header(FILE* file, int is64, uint32_t e_shnum, uint64_t e_shoff)
+MElf_Shdr **get_section_header(FILE* file, int is64, uint32_t e_shnum, uint64_t e_shoff,SectionCallback callback)
 {
 
     size_t size = (is64 ? sizeof(MElf64_Shdr) : sizeof(MElf32_Shdr)) * e_shnum;
     // size_t size = e_phentsize * e_phnum
     char* buffer = (char*) read_file(file, size, e_shoff);
+    callback(size, buffer);
     MElf_Shdr** headers = (MElf_Shdr** ) malloc(sizeof(MElf_Shdr*) * e_shnum);
     int index = 0; 
     for (; index < e_shnum; index++)
@@ -208,12 +209,12 @@ MElf_Shdr **get_section_header(FILE* file, int is64, uint32_t e_shnum, uint64_t 
 
 // duyet mang xong, dua vao mang cac struct de dua len hien thi 
 
-MElf_Shdr_Print** display_section_header(FILE* file, MElf_Ehdr* elf_header)
+MElf_Shdr_Print** display_section_header(FILE* file, MElf_Ehdr* elf_header, SectionCallback callback)
 {
     // hien thi struct nay
 
 
-    MElf_Shdr** array = get_section_header(file, elf_header->e_ident[EI_CLASS] == ELFCLASS64, elf_header->e_shnum, elf_header->e_shoff);
+    MElf_Shdr** array = get_section_header(file, elf_header->e_ident[EI_CLASS] == ELFCLASS64, elf_header->e_shnum, elf_header->e_shoff, callback);
 
     MElf_Shdr_Print** ret = (MElf_Shdr_Print**) malloc (elf_header->e_shnum * sizeof(MElf_Shdr_Print*));
     

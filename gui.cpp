@@ -6,10 +6,20 @@
 #include <glib.h>
 #include "section.h"
 #include "dynamic.h"
+#include "strings.h"
+#include "utils.h"
+#include <sys/stat.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
+#include <string.h>
+#include <glib.h>
 
 GtkWidget *window;
-GtkWidget *hpaned;
+GtkWidget *hpaned, *vpaned;
 GtkWidget *left_frame, *right_frame;
+GtkWidget *right_frame_top, *right_frame_bottom;
+
 
 
 gboolean isOpenFile = false;
@@ -33,16 +43,19 @@ GtkListStore* right_frame_store;
 GtkWidget* right_frame_tree_view;
 GtkCellRenderer* right_frame_renderer; 
 GtkTreeViewColumn* right_frame_column; 
-GtkWidget* right_frame_scroll;
+GtkWidget *right_frame_top_scroll = NULL, *right_frame_bottom_scroll = NULL;
 GtkTreeIter right_frame_iter;
 
 
 
+GtkWidget* text_view;
 
 
 
 FILE* g_file; 
 MElf_Ehdr* g_elf_header = NULL;
+char* g_filename;
+
 
 void focus_metadata()
 {
@@ -67,32 +80,187 @@ void show_info_dialog(GtkWidget* parent, const char* title, const char* message)
     gtk_widget_destroy(dialog);
 }
 
-gboolean init_elf_header()
-{
-    g_elf_header = read_header_file(g_file);
-    if (!g_elf_header)
-    {
-        show_info_dialog(window, "Thông báo", "Vui lòng chọn file .ELF để xem tính năng này");
-        return TRUE;
-    }
-    return FALSE;
-}
 
 void destroy_right_frame()
 {
-    gtk_widget_destroy(right_frame_scroll); 
-    right_frame_scroll = NULL;
+    if (right_frame_top_scroll) {
+        gtk_widget_destroy(right_frame_top_scroll);
+        right_frame_top_scroll = NULL;
+    }
+    if (right_frame_bottom_scroll) {
+        gtk_widget_destroy(right_frame_bottom_scroll);
+        right_frame_bottom_scroll = NULL;
+    }
+    gtk_widget_destroy(text_view);
+    gtk_widget_hide(right_frame_bottom);
+
     right_frame_store = NULL; 
     right_frame_tree_view = NULL;
+}
+void insert_string_to_table(char* buffer)
+{
+    gtk_list_store_insert_with_values(right_frame_store,&right_frame_iter, -1, 0, buffer, -1);
+   
+}
+void insert_value_hex_view(size_t size_temp, char* buffer)
+{
+    GtkWidget* text_view = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(text_view), FALSE); 
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(text_view), FALSE); 
+           
+    GString *out = g_string_new(NULL); 
+
+    size_t index, index_line = 0, j_start = 0;
+    for(index = 0; index < size_temp; index++)
+    {
+	    if ( index_line == 0) 
+        {   
+                    j_start = index;
+		            g_string_append_printf(out, "%08llx     ", index);
+        }
+	                g_string_append_printf(out,"%02x ", (unsigned char)buffer[index]);	
+	                index_line++;
+	    if (index == size_temp - 1 )
+	    {
+		                size_t index_temp = index_line;
+		                for( ; index_temp <= 16 ; index_temp++)
+			                g_string_append_printf(out,"   ");
+	
+	    }
+                     
+	    if ( index == size_temp - 1 || index_line == 16 )
+	    {
+                        g_string_append_printf(out,"          ");
+		                size_t j_index = j_start;
+		                g_string_append_printf(out, "|");
+                        int j = 0;
+		                for( ; j < 16; j++)
+		                {
+			                if ( j_index + j <= index && buffer[j_index + j] >= 32 && buffer[j_index + j] <= 126 )
+			                {	
+				                g_string_append_printf(out, "%c", buffer[j_index + j]);
+			                } else 
+				                g_string_append_printf(out, ".");
+
+		                }
+                        
+		                g_string_append_printf(out, "|\n");
+                
+		                index_line = 0;
+	                }
+	
+	
+            }
+            GtkTextBuffer *buf = gtk_text_view_get_buffer(GTK_TEXT_VIEW(text_view));
+            gtk_text_buffer_set_text(buf, out->str, -1);
+            g_string_free(out, TRUE);
+
+            right_frame_bottom_scroll = gtk_scrolled_window_new(NULL, NULL);
+            gtk_container_add(GTK_CONTAINER(right_frame_bottom_scroll), text_view); 
+            gtk_container_add(GTK_CONTAINER(right_frame_bottom), right_frame_bottom_scroll);
+
+        gtk_widget_show_all(right_frame_bottom);
+}
+
+int init_elf_header()
+{
+    g_elf_header = read_header_file(g_file, insert_value_hex_view);
+    if (!g_elf_header)
+    {
+        show_info_dialog(window, "Thông báo", "Vui lòng chọn file .ELF để xem tính năng này");
+        return 1;
+    }
+    return 0;
+}
+void get_permission_lines(mode_t mode, char *out) {
+    char user[64], group[64], other[64];
+
+    sprintf(user,  "User:   %s %s %s",
+            (mode & S_IRUSR) ? "Read" : "-",
+            (mode & S_IWUSR) ? "Write" : "-",
+            (mode & S_IXUSR) ? "Execute" : "-");
+
+    sprintf(group, "Group:  %s %s %s",
+            (mode & S_IRGRP) ? "Read" : "-",
+            (mode & S_IWGRP) ? "Write" : "-",
+            (mode & S_IXGRP) ? "Execute" : "-");
+
+    sprintf(other, "Other:  %s %s %s",
+            (mode & S_IROTH) ? "Read" : "-",
+            (mode & S_IWOTH) ? "Write" : "-",
+            (mode & S_IXOTH) ? "Execute" : "-");
+
+
+    sprintf(out, "%s\n%s\n%s", user, group, other);
 }
 void init_right_frame(gchar* name)
 {
     destroy_right_frame();
     right_frame_renderer = gtk_cell_renderer_text_new();
 
-    if (g_strcmp0(name, "METADATA") == 0)
+    if (g_strcmp0(name, "Metadata") == 0)
     {
         right_frame_store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
+        
+        struct stat st;
+        if (fstat(fileno(g_file), &st) == 0) 
+        {
+        //     // Kích thước
+            char* filename = g_path_get_basename(g_filename); 
+            char* location = g_path_get_dirname(g_filename);
+            gtk_list_store_insert_with_values(right_frame_store,&right_frame_iter, -1, 0, "Name", 1, filename, -1);
+            gtk_list_store_insert_with_values(right_frame_store,&right_frame_iter, -1, 0, "Location", 1, location, -1);
+
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Size", 1, g_strdup_printf("%lld (bytes)", (long long)st.st_size), -1);
+
+            const char* ftype;
+            if (S_ISREG(st.st_mode)) ftype = "regular file";
+            else if (S_ISDIR(st.st_mode)) ftype = "directory";
+            else if (S_ISLNK(st.st_mode)) ftype = "symbolic link";
+            else if (S_ISCHR(st.st_mode)) ftype = "character device";
+            else if (S_ISBLK(st.st_mode)) ftype = "block device";
+            else if (S_ISFIFO(st.st_mode)) ftype = "FIFO/pipe";
+            else if (S_ISSOCK(st.st_mode)) ftype = "socket";
+            else ftype = "<unknown>";
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Type", 1, ftype, -1);
+
+        //     // Quyền truy cập
+            char perm_lines[256];
+            get_permission_lines(st.st_mode, perm_lines);
+
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                  0, "Permissions", 1, perm_lines, -1);
+
+
+        //     // Owner & Group
+            struct passwd* pw = getpwuid(st.st_uid);
+            struct group* gr = getgrgid(st.st_gid);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Owner", 1, pw ? pw->pw_name : "unknown", -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Group", 1, gr ? gr->gr_name : "unknown", -1);
+
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Number of hard links", 1, g_strdup_printf("%ld", (long)st.st_nlink), -1);
+
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Preferred block size", 1, g_strdup_printf("%ld bytes", (long)st.st_blksize), -1);
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Blocks allocated", 1, g_strdup_printf("%ld", (long)st.st_blocks), -1);
+
+            char buf[64];
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&st.st_atime));
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Last access", 1, buf,-1);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&st.st_mtime));
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Last modification", 1, buf,-1);
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&st.st_ctime));
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
+                                             0, "Last status change", 1, buf,-1);
+        }
             
         right_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(right_frame_store));
         gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(right_frame_tree_view), GTK_TREE_VIEW_GRID_LINES_BOTH);
@@ -104,9 +272,8 @@ void init_right_frame(gchar* name)
         gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), value); 
 
 
-        } else if ( g_strcmp0(name, "ELF Header") == 0)
+    } else if ( g_strcmp0(name, "ELF Header") == 0)
         {
-             
             right_frame_store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 
             right_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(right_frame_store));
@@ -120,29 +287,26 @@ void init_right_frame(gchar* name)
                 }
 
             MEhdr_Print* header = display_elf_header(g_elf_header);
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Magic", 1,header->s_magic); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Class", 1,header->s_class); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Data", 1,header->s_data); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "OS/ABI", 1,header->s_osabi); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "ABI Version", 1,header->s_abiversion); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Type", 1,header->s_type); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Machine", 1,header->s_machine); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version0); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Entry Point Address", 1,header->s_entrypoint_address); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Start of program headers", 1,header->s_start_of_program_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Start of section headers", 1,header->s_start_of_section_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Flags", 1,header->s_flags); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Size of this header", 1,header->s_size_of_this_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Size of program headers", 1,header->s_size_of_program_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Number of program headers", 1,header->s_number_of_program_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Size of section headers", 1,header->s_size_of_section_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Number of section headers", 1,header->s_number_of_section_header); 
-            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Section header string table index", 1,header->s_section_header_string_table_index);
-
-
-
-            free(header); // Cuối cùng giải phóng chính struct
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Magic", 1,header->s_magic, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Class", 1,header->s_class, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Data", 1,header->s_data, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version,-1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "OS/ABI", 1,header->s_osabi, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "ABI Version", 1,header->s_abiversion, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Type", 1,header->s_type, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Machine", 1,header->s_machine, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Version", 1,header->s_version0, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Entry Point Address", 1,header->s_entrypoint_address, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Start of program headers", 1,header->s_start_of_program_header, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Start of section headers", 1,header->s_start_of_section_header, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Flags", 1,header->s_flags, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Size of this header", 1,header->s_size_of_this_header, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Size of program headers", 1,header->s_size_of_program_header, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Number of program headers", 1,header->s_number_of_program_header, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Size of section headers", 1,header->s_size_of_section_header,-1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Number of section headers", 1,header->s_number_of_section_header, -1); 
+            gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1, 0, "Section header string table index", 1,header->s_section_header_string_table_index, -1);
+            free(header); 
             
  
 
@@ -152,6 +316,8 @@ void init_right_frame(gchar* name)
             GtkTreeViewColumn *value = gtk_tree_view_column_new_with_attributes("Value", right_frame_renderer, "text", 1, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), value);
 
+
+            
    
         } else if ( g_strcmp0(name, "Section Header") == 0 )
         {
@@ -169,7 +335,7 @@ void init_right_frame(gchar* name)
                     focus_metadata();
                     return;
                 }
-            MElf_Shdr_Print** arrays = display_section_header(g_file, g_elf_header);
+            MElf_Shdr_Print** arrays = display_section_header(g_file, g_elf_header, insert_value_hex_view);
             for(int i = 0; i < g_elf_header->e_shnum; i++)
             {
                 MElf_Shdr_Print* entity =  (MElf_Shdr_Print*) arrays[i];
@@ -183,7 +349,8 @@ void init_right_frame(gchar* name)
                                                     6, entity->s_flags, 
                                                     7, entity->s_link, 
                                                     8, entity->s_info, 
-                                                    9, entity->s_addralign
+                                                    9, entity->s_addralign,
+                                                    -1
                 );
             }
 
@@ -216,9 +383,7 @@ void init_right_frame(gchar* name)
             
             GtkTreeViewColumn *align = gtk_tree_view_column_new_with_attributes("Align", right_frame_renderer, "text", 9, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), align);
-
-
-
+        
         } else if ( g_strcmp0( name, "Program Header") == 0)
         {
 
@@ -231,7 +396,7 @@ void init_right_frame(gchar* name)
                     focus_metadata();
                     return;
                 }
-            MElf_Phdr_Print** arrays = display_program_header(g_file, g_elf_header);
+            MElf_Phdr_Print** arrays = display_program_header(g_file, g_elf_header, insert_value_hex_view);
 
             for(int i = 0; i < g_elf_header->e_phnum; i++)
             {
@@ -244,7 +409,9 @@ void init_right_frame(gchar* name)
                                                     4, entity->s_filesz, 
                                                     5, entity->s_memsz,
                                                     6, entity->s_flags, 
-                                                    7, entity->s_align
+                                                    7, entity->s_align,
+                                                    -1
+
                 );
                 free(entity->s_type);        
                 free(entity->s_offset);      
@@ -280,9 +447,10 @@ void init_right_frame(gchar* name)
             GtkTreeViewColumn *flags = gtk_tree_view_column_new_with_attributes("flags", right_frame_renderer, "text", 6, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), flags);
             
-            
             GtkTreeViewColumn *align = gtk_tree_view_column_new_with_attributes("Align", right_frame_renderer, "text", 7, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), align);
+        
+
         } else if ( g_strcmp0(name, "Load Library") == 0)
         {
             right_frame_store = gtk_list_store_new(3, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
@@ -295,15 +463,17 @@ void init_right_frame(gchar* name)
                     focus_metadata();
                     return;
                 }
-            MElf_Phdr** program_headers = read_program_header(g_file,g_elf_header->e_ident[EI_CLASS] == ELFCLASS64, g_elf_header->e_phnum, g_elf_header->e_phoff);
-            MElf_Dyn_Print** arrays = display_load_library(g_file, g_elf_header, program_headers);
-            for(int i = 0; i < 28; i++)
+            size_t count;
+            MElf_Phdr** program_headers = read_program_header(g_file,g_elf_header->e_ident[EI_CLASS] == ELFCLASS64, g_elf_header->e_phnum, g_elf_header->e_phoff, insert_value_hex_view);
+            MElf_Dyn_Print** arrays = display_load_library(g_file, g_elf_header, program_headers, &count);
+            for(int i = 0; i < count; i++)
             {
                 MElf_Dyn_Print* entity =  (MElf_Dyn_Print*) arrays[i];
                 gtk_list_store_insert_with_values(right_frame_store, &right_frame_iter, -1,
                                                     0, entity->tag, 
                                                     1, entity->type,
-                                                    2, entity->name
+                                                    2, entity->name,
+                                                    -1
                 );
             }
 
@@ -316,13 +486,22 @@ void init_right_frame(gchar* name)
             GtkTreeViewColumn *name = gtk_tree_view_column_new_with_attributes("Name", right_frame_renderer, "text", 2, NULL);
             gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view), name);
             
-            
 
+        } else if( g_strcmp0(name, "Strings") == 0)
+        {
+
+            right_frame_store = gtk_list_store_new(1, G_TYPE_STRING);
+            right_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(right_frame_store));
+            gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(right_frame_tree_view), GTK_TREE_VIEW_GRID_LINES_BOTH);
+            display_strings_valid(g_file, insert_string_to_table);
+
+            GtkTreeViewColumn *value = gtk_tree_view_column_new_with_attributes("Value", right_frame_renderer, "text", 0, NULL);
+            gtk_tree_view_append_column(GTK_TREE_VIEW(right_frame_tree_view),value);
         }
 
-    right_frame_scroll = gtk_scrolled_window_new(NULL, NULL); 
-    gtk_container_add(GTK_CONTAINER(right_frame_scroll), right_frame_tree_view);
-    gtk_container_add(GTK_CONTAINER(right_frame), right_frame_scroll);
+    right_frame_top_scroll = gtk_scrolled_window_new(NULL, NULL); 
+    gtk_container_add(GTK_CONTAINER(right_frame_top_scroll), right_frame_tree_view);
+    gtk_container_add(GTK_CONTAINER(right_frame_top), right_frame_top_scroll);
 
 }
 void on_tree_selection_changed(GtkTreeView *tree_view, gpointer user_data) {
@@ -332,10 +511,11 @@ void on_tree_selection_changed(GtkTreeView *tree_view, gpointer user_data) {
 
     selection = gtk_tree_view_get_selection(tree_view); // Chon trong tree view
     
-    GtkWidget *old_child = gtk_bin_get_child(GTK_BIN(right_frame));
-    if (old_child) {
-        gtk_widget_destroy(old_child);
-    }
+    // GtkWidget *old_child = gtk_bin_get_child(GTK_BIN(right_frame_top));
+    // if (old_child) {
+    //     gtk_widget_destroy(old_child);
+    // }
+    destroy_right_frame();
     if (gtk_tree_selection_get_selected(selection, &model, &iter)) 
     {
         gchar *name = NULL; 
@@ -343,8 +523,8 @@ void on_tree_selection_changed(GtkTreeView *tree_view, gpointer user_data) {
         init_right_frame(name); 
 
     }
+    gtk_widget_show_all(right_frame_top);
 
-    gtk_widget_show_all(right_frame);
 }
 
 void init_left_frame()
@@ -352,7 +532,7 @@ void init_left_frame()
     
     left_frame_store = gtk_tree_store_new(1, G_TYPE_STRING);
     gtk_tree_store_append(left_frame_store, &metadataIter, NULL);
-    gtk_tree_store_set(left_frame_store, &metadataIter, 0, "METADATA", -1);
+    gtk_tree_store_set(left_frame_store, &metadataIter, 0, "Metadata", -1);
 
     gtk_tree_store_append(left_frame_store, &left_frame_iter, NULL);
     gtk_tree_store_set(left_frame_store, &left_frame_iter, 0, "ELF STRUCTURE", -1);
@@ -368,6 +548,10 @@ void init_left_frame()
 
     gtk_tree_store_append(left_frame_store, &left_frame_iter, NULL);
     gtk_tree_store_set(left_frame_store, &left_frame_iter, 0, "Load Library", -1);
+
+    gtk_tree_store_append(left_frame_store, &left_frame_iter, NULL);
+    gtk_tree_store_set(left_frame_store, &left_frame_iter, 0, "Strings", -1);
+
 
     left_frame_tree_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(left_frame_store));
     gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(left_frame_tree_view), FALSE);
@@ -431,6 +615,7 @@ void on_open_activate(GtkMenuItem *menuitem, gpointer user_data) {
         char *filename;
         GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
         filename = gtk_file_chooser_get_filename(chooser);
+        g_filename = strdup(filename);
         if(isOpenFile)
             on_close_activate(menuitem, user_data);
         g_file = fopen(filename, "rb");
@@ -483,18 +668,27 @@ int main(int argc, char *argv[]) {
     hpaned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
 
     // Left frame
-    left_frame = gtk_frame_new("");
+    left_frame = gtk_frame_new(NULL);
     gtk_widget_set_size_request(left_frame, 240, -1);
     gtk_paned_pack1(GTK_PANED(hpaned), left_frame, TRUE, FALSE);
 
     // Right frame
-    right_frame = gtk_frame_new("");
+    right_frame = gtk_frame_new(NULL);
     gtk_widget_set_size_request(right_frame, 560, -1);
+   
+
+    vpaned = gtk_paned_new(GTK_ORIENTATION_VERTICAL); 
+    right_frame_top = gtk_frame_new(NULL);
+    gtk_widget_set_size_request(right_frame_top, -1, 480);
+    gtk_paned_pack1(GTK_PANED(vpaned), right_frame_top, TRUE, FALSE); 
+
+    right_frame_bottom = gtk_frame_new(NULL);
+    gtk_widget_set_size_request(right_frame_bottom, -1, 120);
+    gtk_paned_pack2(GTK_PANED(vpaned), right_frame_bottom, TRUE, FALSE);
+    
+    gtk_container_add(GTK_CONTAINER(right_frame), vpaned);
+
     gtk_paned_pack2(GTK_PANED(hpaned), right_frame, TRUE, FALSE);
-
-    
-    
-
 
     // Layout
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);

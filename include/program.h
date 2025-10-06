@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "utils.h"
 #include "header.h"
-
+typedef void (*ProgramCallback)(size_t temp, char* buffer); 
 typedef struct
 {
     char* s_type; 
@@ -33,5 +33,5 @@ char* get_program_align(const uint64_t align);
 
 
 
-MElf_Phdr_Print** display_program_header(FILE* file, MElf_Ehdr* elf_header);
-MElf_Phdr** read_program_header(FILE* file, int is64, uint16_t e_phnum, uint64_t e_phoff); 
+MElf_Phdr_Print** display_program_header(FILE* file, MElf_Ehdr* elf_header, ProgramCallback callback);
+MElf_Phdr** read_program_header(FILE* file, int is64, uint16_t e_phnum, uint64_t e_phoff, ProgramCallback callback); 

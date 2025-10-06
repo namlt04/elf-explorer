@@ -6,6 +6,7 @@
 #include <string.h>
 #include <inttypes.h>
 
+typedef void (*HeaderCallback)(size_t size_temp, char* buffer);
 typedef struct
 {
   char* s_magic;
@@ -33,7 +34,7 @@ typedef struct
 MEhdr_Print* display_elf_header(MElf_Ehdr* elf_header);
 
 // Helpers - parse ELF header
-MElf_Ehdr* read_header_file(FILE* file);
+MElf_Ehdr* read_header_file(FILE* file, HeaderCallback callback);
 
 // String formatters
 char* get_magic(const unsigned char* e_ident);

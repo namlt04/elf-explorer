@@ -112,13 +112,13 @@ char* get_program_align(const uint64_t align)
 
 
 
-MElf_Phdr **read_program_header(FILE* file, int is64, uint16_t e_phnum, uint64_t e_phoff)
+MElf_Phdr **read_program_header(FILE* file, int is64, uint16_t e_phnum, uint64_t e_phoff, ProgramCallback callback)
 {
 
     size_t size = (is64 ? sizeof(MElf64_Phdr) : sizeof(MElf32_Phdr)) * e_phnum;
     // size_t size = e_phentsize * e_phnum
     char* buffer = (char*) read_file(file, size, e_phoff);
-
+    callback(size, buffer);
     MElf_Phdr** headers = (MElf_Phdr**) malloc(sizeof(MElf_Phdr*) * e_phnum);
     uint16_t index = 0;
     for(; index < e_phnum; index++)
@@ -159,10 +159,10 @@ MElf_Phdr **read_program_header(FILE* file, int is64, uint16_t e_phnum, uint64_t
 
 }
 
-MElf_Phdr_Print** display_program_header (FILE* file, MElf_Ehdr* elf_header)
+MElf_Phdr_Print** display_program_header (FILE* file, MElf_Ehdr* elf_header, ProgramCallback callback)
 {
 
-    MElf_Phdr** array = read_program_header(file,elf_header->e_ident[EI_CLASS] == ELFCLASS64, elf_header->e_phnum, elf_header->e_phoff);
+    MElf_Phdr** array = read_program_header(file,elf_header->e_ident[EI_CLASS] == ELFCLASS64, elf_header->e_phnum, elf_header->e_phoff, callback);
 
     MElf_Phdr_Print** ret = (MElf_Phdr_Print**) malloc (elf_header->e_phnum * sizeof(MElf_Phdr_Print*));
     
